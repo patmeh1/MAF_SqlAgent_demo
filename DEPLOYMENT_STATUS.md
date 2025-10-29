@@ -30,11 +30,11 @@
 
 ### Azure Resources
 - ✅ Resource Group: **NYP_sql_agent** created in **eastus2**
-- ⏳ SQL Server - Pending (waiting for provider registration)
-- ⏳ SQL Database - Pending
-- ⏳ Storage Account - Pending
-- ⏳ Key Vault - Pending
-- ⏳ AI Foundry Hub - Pending
+- ✅ SQL Server: **nyp-sql-server-1761717077.database.windows.net** (Azure AD auth)
+- ✅ SQL Database: **Northwind** (Basic tier, 2GB)
+- ✅ Storage Account: **nypstorage717077**
+- ✅ Key Vault: **nyp-kv-717077**
+- ✅ AI Foundry Hub: **NYP-AIFoundry-Hub**
 
 ## 📋 Next Steps
 

@@ -8,6 +8,8 @@ import pyodbc
 from typing import List, Dict, Any, Optional
 from openai import AzureOpenAI
 import json
+import struct
+from azure.identity import DefaultAzureCredential, AzureCliCredential
 
 
 class SQLAgent:
@@ -17,18 +19,20 @@ class SQLAgent:
         self,
         sql_server: str,
         sql_database: str,
-        sql_username: str,
-        sql_password: str,
-        azure_openai_endpoint: str,
-        azure_openai_api_key: str,
-        azure_openai_deployment: str,
-        azure_openai_api_version: str = "2024-08-01-preview"
+        sql_username: str = None,
+        sql_password: str = None,
+        azure_openai_endpoint: str = None,
+        azure_openai_api_key: str = None,
+        azure_openai_deployment: str = None,
+        azure_openai_api_version: str = "2024-08-01-preview",
+        use_azure_ad: bool = True
     ):
         """Initialize the SQL Agent with database and Azure OpenAI credentials."""
         self.sql_server = sql_server
         self.sql_database = sql_database
         self.sql_username = sql_username
         self.sql_password = sql_password
+        self.use_azure_ad = use_azure_ad or (sql_username is None and sql_password is None)
         
         # Initialize Azure OpenAI client
         self.client = AzureOpenAI(
@@ -38,17 +42,40 @@ class SQLAgent:
         )
         self.deployment = azure_openai_deployment
         
-        # Database connection string
-        self.connection_string = (
-            f"Driver={{ODBC Driver 18 for SQL Server}};"
-            f"Server=tcp:{sql_server},1433;"
-            f"Database={sql_database};"
-            f"Uid={sql_username};"
-            f"Pwd={sql_password};"
-            f"Encrypt=yes;"
-            f"TrustServerCertificate=no;"
-            f"Connection Timeout=30;"
-        )
+        # Build connection string based on auth type
+        if self.use_azure_ad:
+            # Azure AD authentication
+            self.connection_string = (
+                f"Driver={{ODBC Driver 18 for SQL Server}};"
+                f"Server=tcp:{sql_server},1433;"
+                f"Database={sql_database};"
+                f"Encrypt=yes;"
+                f"TrustServerCertificate=no;"
+                f"Connection Timeout=30;"
+            )
+            # Get Azure AD token
+            try:
+                credential = AzureCliCredential()
+                token = credential.get_token("https://database.windows.net/.default")
+                self.token_bytes = token.token.encode("utf-16-le")
+                self.token_struct = struct.pack(f'<I{len(self.token_bytes)}s', len(self.token_bytes), self.token_bytes)
+            except Exception as e:
+                print(f"Warning: Could not get Azure AD token: {e}")
+                print("Falling back to environment variables if available...")
+                self.token_struct = None
+        else:
+            # SQL authentication
+            self.connection_string = (
+                f"Driver={{ODBC Driver 18 for SQL Server}};"
+                f"Server=tcp:{sql_server},1433;"
+                f"Database={sql_database};"
+                f"Uid={sql_username};"
+                f"Pwd={sql_password};"
+                f"Encrypt=yes;"
+                f"TrustServerCertificate=no;"
+                f"Connection Timeout=30;"
+            )
+            self.token_struct = None
         
         # Get database schema on initialization
         self.schema_info = self._get_database_schema()
@@ -56,10 +83,21 @@ class SQLAgent:
         # Conversation history
         self.conversation_history: List[Dict[str, str]] = []
     
+    def _get_connection(self):
+        """Get a database connection with appropriate authentication."""
+        if self.use_azure_ad and self.token_struct:
+            # Connect with Azure AD token
+            SQL_COPT_SS_ACCESS_TOKEN = 1256  # Connection option for access token
+            conn = pyodbc.connect(self.connection_string, attrs_before={SQL_COPT_SS_ACCESS_TOKEN: self.token_struct})
+        else:
+            # Connect with connection string (SQL auth or env vars)
+            conn = pyodbc.connect(self.connection_string)
+        return conn
+    
     def _get_database_schema(self) -> str:
         """Retrieve the database schema to help with query generation."""
         try:
-            conn = pyodbc.connect(self.connection_string)
+            conn = self._get_connection()
             cursor = conn.cursor()
             
             # Get tables and columns
@@ -173,7 +211,7 @@ Example response format:
     def _execute_query(self, sql_query: str) -> Dict[str, Any]:
         """Execute the SQL query and return results."""
         try:
-            conn = pyodbc.connect(self.connection_string)
+            conn = self._get_connection()
             cursor = conn.cursor()
             
             # Execute the query
