@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Agent Demo - Natural Language Database Query</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 1200px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 15px;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 15px;
+        }
+
+        .message.agent .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px 15px 15px 0;
+            text-align: left;
+        }
+
+        .sql-query {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            color: #333;
+        }
+
+        .results-table {
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .results-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        .results-table th {
+            background: #667eea;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .results-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .explanation {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-container {
+            padding: 20px 30px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #userInput {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #userInput:focus {
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-btn {
+            padding: 10px 20px;
+            font-size: 13px;
+            background: #dc3545;
+        }
+
+        .clear-btn:hover {
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 10px 15px;
+            border-left: 4px solid #c33;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .sample-questions {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .sample-questions h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #1976d2;
+        }
+
+        .sample-questions ul {
+            list-style: none;
+        }
+
+        .sample-questions li {
+            padding: 8px 0;
+            cursor: pointer;
+            color: #1976d2;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+
+        .sample-questions li:hover {
+            color: #0d47a1;
+            text-decoration: underline;
+        }
+
+        .row-count {
+            font-size: 12px;
+            color: #666;
+            margin: 5px 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 SQL Agent - Natural Language Database Query</h1>
+            <p>Ask questions about the Northwind database in plain English</p>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="sample-questions">
+                <h3>📌 Try these sample questions:</h3>
+                <ul>
+                    <li onclick="askQuestion('Show me all products')">• Show me all products</li>
+                    <li onclick="askQuestion('What are the top 5 most expensive products?')">• What are the top 5 most expensive products?</li>
+                    <li onclick="askQuestion('How many customers do we have in each country?')">• How many customers do we have in each country?</li>
+                    <li onclick="askQuestion('Which employees have the most orders?')">• Which employees have the most orders?</li>
+                    <li onclick="askQuestion('Show me orders from customers in Germany')">• Show me orders from customers in Germany</li>
+                    <li onclick="askQuestion('What is the total revenue by category?')">• What is the total revenue by category?</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <button class="clear-btn" onclick="clearHistory()">Clear History</button>
+            <input type="text" id="userInput" placeholder="Ask a question about the database..." onkeypress="handleKeyPress(event)">
+            <button id="sendBtn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'agent'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = content;
+            
+            messageDiv.appendChild(contentDiv);
+            chatContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function formatResults(results) {
+            if (!results || results.length === 0) {
+                return '<div class="error">No results found</div>';
+            }
+
+            let html = '<div class="results-table"><table>';
+            
+            // Header
+            html += '<tr>';
+            Object.keys(results[0]).forEach(key => {
+                html += `<th>${key}</th>`;
+            });
+            html += '</tr>';
+            
+            // Rows (limit to 20)
+            const displayRows = results.slice(0, 20);
+            displayRows.forEach(row => {
+                html += '<tr>';
+                Object.values(row).forEach(value => {
+                    html += `<td>${value !== null ? value : 'NULL'}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</table></div>';
+            
+            if (results.length > 20) {
+                html += `<div class="row-count">Showing 20 of ${results.length} rows</div>`;
+            } else {
+                html += `<div class="row-count">${results.length} row(s) returned</div>`;
+            }
+            
+            return html;
+        }
+
+        async function sendMessage() {
+            const question = userInput.value.trim();
+            if (!question) return;
+
+            // Disable input
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span class="loading"></span>';
+
+            // Add user message
+            addMessage(question, true);
+            userInput.value = '';
+
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    let agentResponse = `<strong>${data.response}</strong>`;
+                    
+                    if (data.sql) {
+                        agentResponse += `<div class="sql-query">${data.sql}</div>`;
+                    }
+                    
+                    if (data.results && data.results.length > 0) {
+                        agentResponse += formatResults(data.results);
+                    }
+                    
+                    if (data.explanation) {
+                        agentResponse += `<div class="explanation">${data.explanation}</div>`;
+                    }
+                    
+                    addMessage(agentResponse, false);
+                } else {
+                    addMessage(`<div class="error">Error: ${data.error || 'Unknown error occurred'}</div>`, false);
+                }
+            } catch (error) {
+                addMessage(`<div class="error">Failed to connect to server: ${error.message}</div>`, false);
+            }
+
+            // Re-enable input
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = 'Send';
+            userInput.focus();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function askQuestion(question) {
+            userInput.value = question;
+            sendMessage();
+        }
+
+        async function clearHistory() {
+            if (!confirm('Are you sure you want to clear the conversation history?')) {
+                return;
+            }
+
+            try {
+                await fetch('/api/clear', { method: 'POST' });
+                
+                // Clear chat container except sample questions
+                const sampleQuestions = document.querySelector('.sample-questions');
+                chatContainer.innerHTML = '';
+                chatContainer.appendChild(sampleQuestions);
+            } catch (error) {
+                alert('Failed to clear history: ' + error.message);
+            }
+        }
+
+        // Focus input on load
+        window.onload = () => {
+            userInput.focus();
+        };
+    </script>
+</body>
+</html>

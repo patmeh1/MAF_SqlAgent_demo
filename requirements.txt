@@ -1,0 +1,17 @@
+# Python Dependencies for SQL Agent Demo
+
+# Web Framework
+Flask==3.0.0
+Werkzeug==3.0.1
+
+# Azure OpenAI
+openai==1.12.0
+
+# Database
+pyodbc==5.0.1
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Utilities
+requests==2.31.0
