@@ -165,11 +165,10 @@ def internal_error(error):
 
 if __name__ == '__main__':
     # Validate required environment variables
+    # SQL_USERNAME and SQL_PASSWORD are optional (for Azure AD auth)
     required_vars = [
         'SQL_SERVER',
         'SQL_DATABASE',
-        'SQL_USERNAME',
-        'SQL_PASSWORD',
         'AZURE_OPENAI_ENDPOINT',
         'AZURE_OPENAI_API_KEY',
         'AZURE_OPENAI_DEPLOYMENT'
@@ -184,16 +183,26 @@ if __name__ == '__main__':
         print("\nPlease update your .env file with the required values.")
         exit(1)
     
+    # Check authentication type
+    sql_username = os.getenv('SQL_USERNAME')
+    sql_password = os.getenv('SQL_PASSWORD')
+    auth_type = os.getenv('SQL_AUTH_TYPE', 'azure_ad')
+    
+    if auth_type == 'sql' and (not sql_username or not sql_password):
+        print("ERROR: SQL authentication requires SQL_USERNAME and SQL_PASSWORD")
+        exit(1)
+    
     print("=" * 60)
     print("SQL Agent Demo - Web Application")
     print("=" * 60)
     print(f"SQL Server: {os.getenv('SQL_SERVER')}")
     print(f"SQL Database: {os.getenv('SQL_DATABASE')}")
+    print(f"Authentication: {'Azure AD' if auth_type == 'azure_ad' else 'SQL Authentication'}")
     print(f"Azure OpenAI Deployment: {os.getenv('AZURE_OPENAI_DEPLOYMENT')}")
     print("=" * 60)
     print("\nStarting Flask application...")
-    print("Access the application at: http://localhost:5000")
+    print("Access the application at: http://localhost:5001")
     print("\nPress CTRL+C to stop the server.")
     print("=" * 60)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
