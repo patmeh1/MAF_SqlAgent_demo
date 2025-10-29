@@ -7,6 +7,10 @@ Werkzeug>=3.0.1
 # Azure OpenAI
 openai>=1.12.0
 
+# Microsoft Agent Framework
+agent-framework>=0.1.0
+agent-framework-openai>=0.1.0
+
 # Database - using latest version for Python 3.14 compatibility
 pyodbc>=5.1.0
 
@@ -18,3 +22,4 @@ python-dotenv>=1.0.0
 
 # Utilities
 requests>=2.31.0
+aiohttp>=3.9.0

@@ -1,34 +1,51 @@
-# SQL Agent Demo - Natural Language Database Query
+# Multi-Agent SQL Demo - Intelligent Natural Language Interface
 
-A customer demo application that uses Azure OpenAI GPT-4o and the Microsoft Agent Framework to query an Azure SQL Database using natural language. Built with Flask, this web application provides an intuitive chat interface for interacting with the Northwind database.
+A sophisticated demo application powered by the **Microsoft Agent Framework** and **Azure OpenAI GPT-4o** that intelligently routes user queries to specialized agents. The system can handle both database queries and general knowledge questions through an intuitive chat interface.
 
-![Demo Screenshot](https://via.placeholder.com/800x400?text=SQL+Agent+Chat+Interface)
+![Multi-Agent Architecture](https://via.placeholder.com/800x400?text=Multi-Agent+SQL+Demo)
 
 ## 🎯 Features
 
+### Intelligent Multi-Agent System
+- **Smart Query Routing**: Automatic detection of query intent and routing to the appropriate agent
+- **SQL Agent**: Translates natural language to SQL and queries Azure SQL Database
+- **General Agent**: Handles general questions, web searches, and conversations
+- **Context Awareness**: Maintains conversation history across different query types
+
+### SQL Agent Capabilities
 - **Natural Language Queries**: Ask questions about your database in plain English
 - **Intelligent SQL Generation**: GPT-4o automatically generates optimized SQL queries
 - **Real-time Results**: View query results in an interactive, formatted table
-- **Chat Interface**: Beautiful, modern web UI with conversation history
-- **Azure Integration**: Fully integrated with Azure SQL Database and Azure AI Foundry
 - **Safe Queries**: Read-only queries to protect your data
 - **Query Explanations**: Understand what SQL is being executed
+
+### General Agent Capabilities
+- **General Knowledge**: Ask about any topic, not just database-related
+- **Conversations**: Have natural conversations with the AI
+- **Information Retrieval**: Get information from various sources
+- **Flexible Responses**: Not constrained to database operations
+
+### User Interface
+- **Beautiful Chat Interface**: Modern web UI with conversation history
+- **Agent Transparency**: See which agent handled each query
+- **Mixed Query Support**: Seamlessly switch between SQL and general queries
+- **Session Management**: Conversation history per session
 
 ## 🏗️ Architecture
 
 ```
-User Question (Natural Language)
-        ↓
-   SQL Agent (GPT-4o)
-        ↓
-   SQL Query Generation
-        ↓
-   Azure SQL Database
-        ↓
-   Results + Natural Language Response
-        ↓
-   Web Chat Interface
+User Question
+     ↓
+Multi-Agent Orchestrator (Planner/Router)
+     ↓
+   ┌─┴─┐
+   ↓   ↓
+SQL Agent    General Agent
+   ↓              ↓
+Database      AI Response
 ```
+
+**See [MULTI_AGENT_ARCHITECTURE.md](MULTI_AGENT_ARCHITECTURE.md) for detailed architecture documentation.**
 
 ## 📋 Prerequisites
 
@@ -143,23 +160,32 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+**Note:** This will install:
+- Microsoft Agent Framework and dependencies
+- Azure OpenAI SDK
+- Flask web framework
+- Database connectors
+- And other required packages
+
 ### 8. Run the Application
 
 ```bash
 python app.py
 ```
 
-The application will start on `http://localhost:5000`
+The application will start on `http://localhost:5001` with the multi-agent system enabled.
 
 ## 💬 Using the Application
 
-1. Open your browser and navigate to `http://localhost:5000`
+1. Open your browser and navigate to `http://localhost:5001`
 2. Type natural language questions in the chat input
-3. Press Enter or click Send
-4. View the generated SQL query, results, and natural language explanation
+3. The system automatically routes your query to the appropriate agent
+4. View the response with agent information and results
+5. Mix database queries with general questions seamlessly!
 
 ### Example Questions
 
+#### SQL Agent Queries (Database)
 - "Show me all products"
 - "What are the top 5 most expensive products?"
 - "How many customers do we have in each country?"
@@ -169,17 +195,63 @@ The application will start on `http://localhost:5000`
 - "List all suppliers from the USA"
 - "Show me products that are discontinued"
 
+#### General Agent Queries (Non-Database)
+- "What is machine learning?"
+- "Explain the difference between SQL and NoSQL"
+- "Tell me about Microsoft Azure"
+- "What are best practices for API design?"
+- "How does the Northwind database relate to real-world scenarios?"
+
+#### Mixed Conversation Example
+1. "Show me all products under $20" *(SQL Agent)*
+2. "What makes a good product pricing strategy?" *(General Agent)*
+3. "How many customers do we have?" *(SQL Agent)*
+4. "What is customer relationship management?" *(General Agent)*
+
+## 🤖 Multi-Agent System
+
+### Available Agents
+
+**1. SQL Agent** 🗄️
+- Specializes in database queries
+- Converts natural language to SQL
+- Executes queries safely
+- Provides formatted results
+
+**2. General Agent** 🌐
+- Handles general knowledge questions
+- Provides information and explanations
+- Supports conversations
+- Not limited to database topics
+
+### How Routing Works
+
+The **Multi-Agent Orchestrator** analyzes each query and:
+1. Examines the question content
+2. Considers conversation context
+3. Reviews database schema
+4. Makes a routing decision with confidence score
+5. Routes to the most appropriate agent
+
+You can see which agent handled each response in the UI!
+
 ## 📁 Project Structure
 
 ```
-sql-agent-demo/
-├── app.py                      # Flask web application
-├── sql_agent.py                # SQL Agent implementation
-├── requirements.txt            # Python dependencies
+MAF_SqlAgent_demo/
+├── app.py                      # Flask web application with multi-agent support
+├── sql_agent.py                # Original SQL Agent implementation
+├── agents/                     # Multi-agent system
+│   ├── __init__.py            # Package initialization
+│   ├── orchestrator.py        # Multi-agent orchestrator with routing
+│   ├── sql_agent_wrapper.py   # SQL Agent wrapper for framework
+│   └── general_agent.py       # General knowledge agent
+├── requirements.txt            # Python dependencies (including agent-framework)
 ├── .env                        # Environment configuration (created by setup)
 ├── .env.template               # Template for environment variables
 ├── .gitignore                  # Git ignore rules
 ├── README.md                   # This file
+├── MULTI_AGENT_ARCHITECTURE.md # Detailed architecture documentation
 ├── database/
 │   └── northwind.sql           # Northwind database schema and data
 ├── scripts/
@@ -193,19 +265,132 @@ sql-agent-demo/
 
 ### Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SQL_SERVER` | Azure SQL Server hostname | `nyp-sql-server.database.windows.net` |
-| `SQL_DATABASE` | Database name | `Northwind` |
-| `SQL_USERNAME` | SQL admin username | `sqladmin` |
-| `SQL_PASSWORD` | SQL admin password | `YourPassword123!` |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint URL | `https://xxx.openai.azure.com/` |
-| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | `abc123...` |
-| `AZURE_OPENAI_DEPLOYMENT` | GPT-4o deployment name | `NYP_demo` |
-| `AZURE_OPENAI_API_VERSION` | API version | `2024-08-01-preview` |
-| `FLASK_SECRET_KEY` | Flask session secret | Auto-generated |
+| Variable | Description | Example | Required |
+|----------|-------------|---------|----------|
+| `SQL_SERVER` | Azure SQL Server hostname | `nyp-sql-server.database.windows.net` | Yes |
+| `SQL_DATABASE` | Database name | `Northwind` | Yes |
+| `SQL_USERNAME` | SQL admin username | `sqladmin` | Optional* |
+| `SQL_PASSWORD` | SQL admin password | `YourPassword123!` | Optional* |
+| `SQL_AUTH_TYPE` | Authentication type | `azure_ad` or `sql` | No (default: azure_ad) |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint URL | `https://xxx.openai.azure.com/` | Yes |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | `abc123...` | Yes |
+| `AZURE_OPENAI_DEPLOYMENT` | GPT-4o deployment name | `NYP_demo` | Yes |
+| `AZURE_OPENAI_API_VERSION` | API version | `2024-08-01-preview` | No |
+| `FLASK_SECRET_KEY` | Flask session secret | Auto-generated | No |
+
+*SQL credentials are optional when using Azure AD authentication
+
+## 🔌 API Endpoints
+
+### POST `/api/query`
+Process a user query with automatic or forced agent routing.
+
+**Request:**
+```json
+{
+  "question": "What are the top selling products?",
+  "agent": "sql"  // Optional: "sql" or "general" to force specific agent
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "question": "What are the top selling products?",
+  "response": "Based on the database...",
+  "agent_used": "SQL Agent",
+  "agent_type": "sql",
+  "sql": "SELECT TOP 5 ...",
+  "explanation": "This query retrieves...",
+  "results": [...],
+  "row_count": 5,
+  "timestamp": "2024-10-29T12:00:00"
+}
+```
+
+### GET `/api/agents`
+Get information about available agents.
+
+**Response:**
+```json
+{
+  "success": true,
+  "agents": {
+    "sql": "Specialist in querying Azure SQL Database...",
+    "general": "General knowledge assistant..."
+  }
+}
+```
+
+### GET `/api/history`
+Retrieve conversation history for the current session.
+
+### POST `/api/clear`
+Clear conversation history and reset all agents.
+
+### GET `/api/health`
+Health check endpoint.
 
 ## 🎨 Customization
+
+### Adding New Agents
+
+The multi-agent architecture is designed to be extensible. To add a new specialized agent:
+
+1. **Create a new agent class** in `agents/`:
+```python
+# agents/document_agent.py
+from typing import List
+from agent_framework import ChatMessage, Role
+
+class DocumentAgent:
+    def __init__(self, ...):
+        self.name = "DocumentAgent"
+        self.description = "Analyzes and queries documents..."
+    
+    async def run(self, messages: List[ChatMessage]) -> List[ChatMessage]:
+        # Your agent logic here
+        return response_messages
+```
+
+2. **Update the orchestrator** (`agents/orchestrator.py`):
+```python
+def __init__(self, ..., document_agent: DocumentAgent):
+    self.document_agent = document_agent
+    # Add routing logic in _route_query()
+```
+
+3. **Update the factory function**:
+```python
+def create_orchestrator_from_env(...):
+    document_agent = DocumentAgent(...)
+    orchestrator = MultiAgentOrchestrator(
+        ...,
+        document_agent=document_agent
+    )
+```
+
+See [MULTI_AGENT_ARCHITECTURE.md](MULTI_AGENT_ARCHITECTURE.md) for detailed instructions.
+
+### Customizing Agent Behavior
+
+Each agent can be customized:
+
+**SQL Agent:**
+- Modify SQL generation prompts in `sql_agent.py`
+- Adjust temperature and token limits
+- Add custom SQL validation
+
+**General Agent:**
+- Update instructions in `agents/general_agent.py`
+- Change the model (e.g., GPT-4o-mini for faster responses)
+- Add tools and capabilities
+
+**Orchestrator:**
+- Tune routing confidence thresholds
+- Adjust context window size
+- Modify routing decision prompts
 
 ### Adding More Sample Questions
 

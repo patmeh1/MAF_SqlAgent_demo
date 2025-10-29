@@ -1,13 +1,17 @@
 """
-Flask Web Application for SQL Agent Demo
-Provides a chat interface to query SQL database using natural language.
+Flask Web Application for Multi-Agent SQL Demo
+Provides a chat interface using Microsoft Agent Framework for intelligent routing.
+Routes queries to SQL Agent for database queries or General Agent for other questions.
 """
 
 from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
 import os
 import secrets
+import asyncio
 from sql_agent import create_agent_from_env
+from agents.sql_agent_wrapper import SQLAgentWrapper
+from agents.orchestrator import create_orchestrator_from_env
 from datetime import datetime
 
 # Load environment variables
@@ -16,26 +20,31 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', secrets.token_hex(32))
 
-# Store agent instances per session
-agents = {}
+# Store orchestrator instances per session
+orchestrators = {}
 
 
-def get_agent_for_session():
-    """Get or create an agent instance for the current session."""
+def get_orchestrator_for_session():
+    """Get or create an orchestrator instance for the current session."""
     session_id = session.get('session_id')
     
     if not session_id:
         session_id = secrets.token_hex(16)
         session['session_id'] = session_id
     
-    if session_id not in agents:
+    if session_id not in orchestrators:
         try:
-            agents[session_id] = create_agent_from_env()
+            # Create SQL agent
+            sql_agent = create_agent_from_env()
+            sql_agent_wrapper = SQLAgentWrapper(sql_agent)
+            
+            # Create orchestrator with both SQL and General agents
+            orchestrators[session_id] = create_orchestrator_from_env(sql_agent_wrapper)
         except Exception as e:
-            print(f"Error creating agent: {e}")
+            print(f"Error creating orchestrator: {e}")
             return None
     
-    return agents[session_id]
+    return orchestrators[session_id]
 
 
 @app.route('/')
@@ -50,6 +59,7 @@ def query():
     try:
         data = request.get_json()
         user_question = data.get('question', '').strip()
+        force_agent = data.get('agent', None)  # Optional: force specific agent
         
         if not user_question:
             return jsonify({
@@ -57,30 +67,48 @@ def query():
                 'error': 'Please provide a question.'
             }), 400
         
-        # Get agent for this session
-        agent = get_agent_for_session()
-        if not agent:
+        # Get orchestrator for this session
+        orchestrator = get_orchestrator_for_session()
+        if not orchestrator:
             return jsonify({
                 'success': False,
-                'error': 'Failed to initialize SQL agent. Check your configuration.'
+                'error': 'Failed to initialize multi-agent system. Check your configuration.'
             }), 500
         
-        # Process the query
-        result = agent.query(user_question)
+        # Process the query (async operation)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            if force_agent:
+                result = loop.run_until_complete(
+                    orchestrator.query_with_agent_choice(user_question, force_agent)
+                )
+            else:
+                result = loop.run_until_complete(
+                    orchestrator.query(user_question)
+                )
+        finally:
+            loop.close()
         
         # Format response
         response = {
-            'success': result['success'],
-            'question': result['question'],
-            'response': result['response'],
-            'sql': result['sql'],
-            'explanation': result['explanation'],
-            'results': result['results'],
-            'row_count': result.get('row_count', 0),
+            'success': result.get('success', False),
+            'question': result.get('question', user_question),
+            'response': result.get('response', ''),
+            'agent_used': result.get('agent_used', 'Unknown'),
+            'agent_type': result.get('agent_type', 'unknown'),
             'timestamp': datetime.now().isoformat()
         }
         
-        if not result['success']:
+        # Add SQL-specific fields if available
+        if 'sql' in result:
+            response['sql'] = result['sql']
+            response['explanation'] = result.get('explanation', '')
+            response['results'] = result.get('results', None)
+            response['row_count'] = result.get('row_count', 0)
+        
+        if not result.get('success', False):
             response['error'] = result.get('error', 'Unknown error occurred')
         
         return jsonify(response)
@@ -96,14 +124,14 @@ def query():
 def get_history():
     """Get conversation history for the current session."""
     try:
-        agent = get_agent_for_session()
-        if not agent:
+        orchestrator = get_orchestrator_for_session()
+        if not orchestrator:
             return jsonify({
                 'success': False,
                 'error': 'No active session'
             }), 404
         
-        history = agent.get_conversation_history()
+        history = orchestrator.get_conversation_history()
         return jsonify({
             'success': True,
             'history': history
@@ -120,9 +148,9 @@ def get_history():
 def clear_history():
     """Clear conversation history for the current session."""
     try:
-        agent = get_agent_for_session()
-        if agent:
-            agent.clear_history()
+        orchestrator = get_orchestrator_for_session()
+        if orchestrator:
+            orchestrator.clear_history()
         
         return jsonify({
             'success': True,
@@ -133,6 +161,30 @@ def clear_history():
         return jsonify({
             'success': False,
             'error': f'Error clearing history: {str(e)}'
+        }), 500
+
+
+@app.route('/api/agents', methods=['GET'])
+def get_agents():
+    """Get information about available agents."""
+    try:
+        orchestrator = get_orchestrator_for_session()
+        if not orchestrator:
+            return jsonify({
+                'success': False,
+                'error': 'No active session'
+            }), 404
+        
+        agents_info = orchestrator.get_available_agents()
+        return jsonify({
+            'success': True,
+            'agents': agents_info
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error retrieving agents: {str(e)}'
         }), 500
 
 
@@ -193,11 +245,18 @@ if __name__ == '__main__':
         exit(1)
     
     print("=" * 60)
-    print("SQL Agent Demo - Web Application")
+    print("Multi-Agent SQL Demo - Web Application")
+    print("Powered by Microsoft Agent Framework")
     print("=" * 60)
     print(f"SQL Server: {os.getenv('SQL_SERVER')}")
     print(f"SQL Database: {os.getenv('SQL_DATABASE')}")
     print(f"Authentication: {'Azure AD' if auth_type == 'azure_ad' else 'SQL Authentication'}")
+    print(f"Multi-Agent System: SQL Agent + General Agent")
+    print("=" * 60)
+    print("Starting server on http://localhost:5001")
+    print("=" * 60)
+    
+    app.run(host='0.0.0.0', port=5001, debug=True)
     print(f"Azure OpenAI Deployment: {os.getenv('AZURE_OPENAI_DEPLOYMENT')}")
     print("=" * 60)
     print("\nStarting Flask application...")
