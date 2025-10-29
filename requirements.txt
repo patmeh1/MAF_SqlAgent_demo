@@ -1,25 +1,21 @@
 # Python Dependencies for SQL Agent Demo
 
 # Web Framework
-Flask>=3.0.0
-Werkzeug>=3.0.1
+Flask==3.0.0
+Werkzeug==3.0.1
 
 # Azure OpenAI
-openai>=1.12.0
+openai==1.12.0
 
-# Microsoft Agent Framework
-agent-framework>=0.1.0
-agent-framework-openai>=0.1.0
+# Database
+pyodbc>=5.2.0
 
-# Database - using latest version for Python 3.14 compatibility
-pyodbc>=5.1.0
+# Azure Authentication
+azure-identity==1.15.0
 
-# Azure AD Authentication
-azure-identity>=1.15.0
+# Environment and Configuration
+python-dotenv==1.0.0
 
-# Environment Variables
-python-dotenv>=1.0.0
-
-# Utilities
-requests>=2.31.0
-aiohttp>=3.9.0
+# HTTP Client
+requests==2.31.0
+aiohttp==3.9.0

@@ -7,7 +7,7 @@ import asyncio
 from typing import Dict, Any, List, Optional
 from enum import Enum
 from agent_framework import ChatMessage, Role, ChatAgent
-from agent_framework.openai import OpenAIChatClient
+from agent_framework.azure import AzureOpenAIChatClient
 from .sql_agent_wrapper import SQLAgentWrapper
 from .general_agent import GeneralAgent
 import json
@@ -47,10 +47,15 @@ class MultiAgentOrchestrator:
         self.sql_agent = sql_agent
         self.general_agent = general_agent
         
-        # Initialize the planner/router agent
-        self.planner_client = OpenAIChatClient(
-            model_id=azure_openai_deployment or "gpt-4o",
-            azure_endpoint=azure_openai_endpoint,
+        # Initialize the planner/router agent using Azure OpenAI
+        # Extract the base endpoint (remove everything after and including /openai/)
+        endpoint = azure_openai_endpoint
+        if endpoint and '/openai/' in endpoint:
+            endpoint = endpoint.split('/openai/')[0]
+        
+        self.planner_client = AzureOpenAIChatClient(
+            endpoint=endpoint,
+            deployment_name=azure_openai_deployment or "gpt-4o",
             api_key=azure_openai_api_key
         )
         
@@ -111,17 +116,23 @@ Database schema information:
         
         try:
             # Use the planner to route
-            response = await self.planner_client.complete(
+            response = await self.planner_client.get_response(
                 messages=[
                     ChatMessage(role=Role.SYSTEM, text=system_prompt),
                     ChatMessage(role=Role.USER, text=user_prompt)
                 ],
                 temperature=0.1,
-                response_format={"type": "json_object"}
+                json_output=True
             )
             
-            # Parse response
-            result = json.loads(response.choices[0].message.content)
+            # Parse response - get_response returns a ChatResponse object
+            # Use the text attribute which contains the response content
+            content = response.text
+            if isinstance(content, str):
+                result = json.loads(content)
+            else:
+                result = content
+                
             agent_choice = result.get("agent", "general").lower()
             
             print(f"🎯 Router Decision: {agent_choice} (confidence: {result.get('confidence', 0.0):.2f})")

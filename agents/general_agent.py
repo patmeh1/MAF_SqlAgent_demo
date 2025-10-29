@@ -5,7 +5,7 @@ Handles non-database queries like web searches, general questions, and conversat
 
 from typing import List, Dict, Any
 from agent_framework import ChatMessage, Role, ChatAgent
-from agent_framework.openai import OpenAIChatClient
+from agent_framework.azure import AzureOpenAIChatClient
 import os
 
 
@@ -38,10 +38,15 @@ class GeneralAgent:
         - Needs help with documents or external information
         """
         
-        # Initialize OpenAI chat client
-        self.chat_client = OpenAIChatClient(
-            model_id=model_id or azure_openai_deployment,
-            azure_endpoint=azure_openai_endpoint,
+        # Initialize Azure OpenAI chat client
+        # Extract the base endpoint (remove everything after and including /openai/)
+        endpoint = azure_openai_endpoint
+        if endpoint and '/openai/' in endpoint:
+            endpoint = endpoint.split('/openai/')[0]
+        
+        self.chat_client = AzureOpenAIChatClient(
+            endpoint=endpoint,
+            deployment_name=model_id or azure_openai_deployment,
             api_key=azure_openai_api_key
         )
         
